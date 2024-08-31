@@ -1,0 +1,25 @@
+{
+  "name": "todo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.2.0",
+    "@aws-amplify/backend-cli": "^1.2.5",
+    "aws-cdk": "^2.155.0",
+    "aws-cdk-lib": "^2.155.0",
+    "constructs": "^10.3.0",
+    "esbuild": "^0.23.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "aws-amplify": "^6.5.3"
+  }
+}
