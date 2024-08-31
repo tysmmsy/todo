@@ -1,5 +1,7 @@
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineBackend } from '@aws-amplify/backend'
-import { Stack } from 'aws-cdk-lib'
+import { Duration, RemovalPolicy, Stack, aws_dynamodb } from 'aws-cdk-lib'
 import {
 	CorsHttpMethod,
 	HttpApi,
@@ -8,16 +10,51 @@ import {
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam'
+import { Runtime } from 'aws-cdk-lib/aws-lambda'
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
+import { RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { auth } from './auth/resource'
-import { data } from './data/resource'
-import { postTodoFn } from './functions/todo/postTodo/resource'
 
 const backend = defineBackend({
 	auth,
-	data,
-	postTodoFn,
 })
 
+/**
+ * DynamoDB
+ */
+const externalDataSourcesStack = backend.createStack('TodoTableStack')
+
+const todoTable = new aws_dynamodb.Table(
+	externalDataSourcesStack,
+	'MyTodoTable',
+	{
+		partitionKey: { name: 'id', type: aws_dynamodb.AttributeType.STRING },
+		billingMode: aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+		removalPolicy: RemovalPolicy.DESTROY,
+	},
+)
+
+/**
+ * Lambda
+ */
+const __fileName = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__fileName)
+
+const postTodoFn = new NodejsFunction(externalDataSourcesStack, 'postTodoFn', {
+	runtime: Runtime.NODEJS_20_X,
+	entry: path.join(__dirname, '../amplify/functions/todo/postTodo/handler.ts'),
+	memorySize: 256,
+	logRetention: RetentionDays.ONE_DAY,
+	timeout: Duration.seconds(25),
+	environment: {
+		TODO_TABLE_NAME: todoTable.tableName,
+	},
+})
+todoTable.grantWriteData(postTodoFn)
+
+/**
+ * API Gateway
+ */
 const apiStack = backend.createStack('api-stack')
 
 const userPoolAuthorizer = new HttpUserPoolAuthorizer(
@@ -43,10 +80,7 @@ const httpApi = new HttpApi(apiStack, 'HttpApi', {
 	createDefaultStage: true,
 })
 
-const postTodoIntegration = new HttpLambdaIntegration(
-	'postTodoFn',
-	backend.postTodoFn.resources.lambda,
-)
+const postTodoIntegration = new HttpLambdaIntegration('postTodoFn', postTodoFn)
 
 httpApi.addRoutes({
 	path: '/todo',
