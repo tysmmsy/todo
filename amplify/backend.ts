@@ -48,6 +48,7 @@ const postTodoFn = new NodejsFunction(externalDataSourcesStack, 'postTodoFn', {
 	timeout: Duration.seconds(25),
 	environment: {
 		TODO_TABLE_NAME: todoTable.tableName,
+		POWERTOOLS_LOG_LEVEL: 'DEBUG',
 	},
 })
 todoTable.grantWriteData(postTodoFn)

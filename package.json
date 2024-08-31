@@ -27,6 +27,13 @@
 		"@aws-sdk/client-dynamodb": "^3.637.0",
 		"@aws-sdk/lib-dynamodb": "^3.637.0",
 		"@middy/core": "^5.4.6",
-		"aws-amplify": "^6.5.3"
+		"@middy/http-error-handler": "^5.4.6",
+		"@types/http-errors": "^2.0.4",
+		"await-to-js": "^3.0.0",
+		"aws-amplify": "^6.5.3",
+		"dayjs": "^1.11.13",
+		"http-errors": "^2.0.0",
+		"ulid": "^2.3.0",
+		"zod": "^3.23.8"
 	}
 }
