@@ -1,28 +1,43 @@
-import styles from '@/styles/Home.module.css'
-import { Inter } from 'next/font/google'
-import Head from 'next/head'
+import { pagesPath } from '@/lib/$path'
+import { runWithAmplifyServerContext } from '@/lib/amplify/server-utils'
+import type { AmplifyServer } from 'aws-amplify/adapter-core'
+import { fetchAuthSession } from 'aws-amplify/auth/server'
+import type { GetServerSideProps } from 'next'
+interface UserContext {
+	authenticated: boolean
+}
 
-import { Authenticator } from '@aws-amplify/ui-react'
-import '@aws-amplify/ui-react/styles.css'
-import { Button } from '@mui/material'
+export default function LoginRedirectPage() {
+	return <div>Redirecting...</div>
+}
 
-const inter = Inter({ subsets: ['latin'] })
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
+	const { authenticated } = await runWithAmplifyServerContext<UserContext>({
+		nextServerContext: { request: req, response: res },
+		operation: async (
+			contextSpec: AmplifyServer.ContextSpec,
+		): Promise<UserContext> => {
+			try {
+				const session = await fetchAuthSession(contextSpec, {})
+				return {
+					authenticated: session.tokens !== undefined,
+				}
+			} catch (error) {
+				return {
+					authenticated: false,
+				}
+			}
+		},
+	})
 
-export default function Home() {
-	return (
-		<Authenticator>
-			{({ signOut }) => (
-				<>
-					<Head>
-						<title>Todo App</title>
-					</Head>
-					<main className={`${styles.main} ${inter.className}`}>
-						<Button variant='contained' onClick={signOut}>
-							サインアウト
-						</Button>
-					</main>
-				</>
-			)}
-		</Authenticator>
-	)
+	if (!authenticated) {
+		return { props: {} }
+	}
+
+	return {
+		redirect: {
+			destination: pagesPath.todos.$url().pathname,
+			permanent: false,
+		},
+	}
 }

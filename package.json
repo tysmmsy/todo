@@ -31,6 +31,7 @@
 		"typescript": "^5.5.4"
 	},
 	"dependencies": {
+		"@aws-amplify/adapter-nextjs": "^1.2.15",
 		"@aws-amplify/ui-react": "^6.2.0",
 		"@aws-lambda-powertools/logger": "^2.7.0",
 		"@aws-sdk/client-dynamodb": "^3.637.0",
