@@ -10,6 +10,14 @@ import { AppCacheProvider } from '@mui/material-nextjs/v13-pagesRouter'
 Amplify.configure(outputs, {
 	ssr: true,
 })
+const existingConfig = Amplify.getConfig()
+Amplify.configure({
+	...existingConfig,
+	API: {
+		...existingConfig.API,
+		REST: outputs.custom.API,
+	},
+})
 
 export default function App({ Component, pageProps }: AppProps) {
 	return (

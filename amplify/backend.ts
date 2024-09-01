@@ -1,7 +1,5 @@
-import * as path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { defineBackend } from '@aws-amplify/backend'
-import { Duration, RemovalPolicy, Stack, aws_dynamodb } from 'aws-cdk-lib'
+import { RemovalPolicy, Stack, aws_dynamodb } from 'aws-cdk-lib'
 import {
 	CorsHttpMethod,
 	HttpApi,
@@ -10,13 +8,13 @@ import {
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam'
-import { Runtime } from 'aws-cdk-lib/aws-lambda'
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
-import { RetentionDays } from 'aws-cdk-lib/aws-logs'
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { auth } from './auth/resource'
+import { postTodoFunction } from './functions/todo/postTodo/resource'
 
 const backend = defineBackend({
 	auth,
+	postTodoFunction,
 })
 
 /**
@@ -24,7 +22,7 @@ const backend = defineBackend({
  */
 const externalDataSourcesStack = backend.createStack('TodoTableStack')
 
-const todoTable = new aws_dynamodb.Table(
+export const todoTable = new aws_dynamodb.Table(
 	externalDataSourcesStack,
 	'MyTodoTable',
 	{
@@ -33,28 +31,36 @@ const todoTable = new aws_dynamodb.Table(
 		removalPolicy: RemovalPolicy.DESTROY,
 	},
 )
+todoTable.grantWriteData(backend.postTodoFunction.resources.lambda)
 
 /**
  * Lambda
  */
-const __fileName = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__fileName)
-
-const postTodoFn = new NodejsFunction(externalDataSourcesStack, 'postTodoFn', {
-	runtime: Runtime.NODEJS_20_X,
-	entry: path.join(__dirname, '../amplify/functions/todo/postTodo/handler.ts'),
-	memorySize: 256,
-	logRetention: RetentionDays.ONE_DAY,
-	timeout: Duration.seconds(25),
-	environment: {
-		TODO_TABLE_NAME: todoTable.tableName,
-		POWERTOOLS_LOG_LEVEL: 'DEBUG',
-	},
+// TODO: Lambdaごとにやると手間なため、後で改善する
+new LogGroup(backend.postTodoFunction.resources.lambda, 'PostTodoFnLogGroup', {
+	logGroupName: `/aws/lambda/${backend.postTodoFunction.resources.lambda.functionName}`,
+	retention: RetentionDays.ONE_DAY,
 })
-todoTable.grantWriteData(postTodoFn)
+backend.postTodoFunction.addEnvironment(
+	'COGNITO_USER_POOL_CLIENT_ID',
+	backend.auth.resources.userPoolClient.userPoolClientId,
+)
+backend.postTodoFunction.addEnvironment(
+	'COGNITO_USER_POOL_ID',
+	backend.auth.resources.userPool.userPoolId,
+)
+backend.postTodoFunction.addEnvironment('TODO_TABLE_NAME', todoTable.tableName)
+backend.postTodoFunction.addEnvironment('POWERTOOLS_LOG_LEVEL', 'DEBUG')
+
+const postIntegration = new HttpLambdaIntegration(
+	'postIntegration',
+	backend.postTodoFunction.resources.lambda,
+)
 
 /**
  * API Gateway
+ * https://docs.amplify.aws/nextjs/build-a-backend/add-aws-services/rest-api/set-up-http-api/
+ * に倣って設定
  */
 const apiStack = backend.createStack('api-stack')
 
@@ -81,12 +87,10 @@ const httpApi = new HttpApi(apiStack, 'HttpApi', {
 	createDefaultStage: true,
 })
 
-const postTodoIntegration = new HttpLambdaIntegration('postTodoFn', postTodoFn)
-
 httpApi.addRoutes({
 	path: '/todo',
 	methods: [HttpMethod.POST],
-	integration: postTodoIntegration,
+	integration: postIntegration,
 	authorizer: userPoolAuthorizer,
 })
 
