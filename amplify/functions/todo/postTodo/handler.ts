@@ -3,8 +3,14 @@ import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
 import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import middy from '@middy/core'
 import httpErrorHandler from '@middy/http-error-handler'
+import httpHeaderNormalizer from '@middy/http-header-normalizer'
+import httpJsonBodyParser from '@middy/http-json-body-parser'
 import { to } from 'await-to-js'
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda'
+import type {
+	APIGatewayProxyEventV2WithJWTAuthorizer,
+	APIGatewayProxyHandlerV2WithJWTAuthorizer,
+	APIGatewayProxyResult,
+} from 'aws-lambda'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -13,6 +19,7 @@ import { ulid } from 'ulid'
 import { z } from 'zod'
 import type { Schema } from '../../../data/resource'
 import { ddbDocClient } from '../../shared/aws-sdk-client/ddbDocClient'
+import { isTokenValid } from '../../shared/isTokenValid'
 import { logger } from '../../shared/powertools/utilities'
 
 dayjs.extend(utc)
@@ -25,16 +32,35 @@ const inputSchema = z.object({
 
 type ResponsePostTodo = Schema['ResponsePostTodo']['type']
 
-// TODO: Cognito認証の型を確認してから修正する
-const lambdaHandler: APIGatewayProxyHandlerV2 = async (event) => {
-	if (!process.env.TODO_TABLE_NAME) {
+const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
+	event: APIGatewayProxyEventV2WithJWTAuthorizer,
+): Promise<APIGatewayProxyResult> => {
+	if (
+		!process.env.TODO_TABLE_NAME ||
+		!process.env.COGNITO_USER_POOL_ID ||
+		!process.env.COGNITO_USER_POOL_CLIENT_ID
+	) {
 		logger.error('必要な環境変数が設定されていません。')
 		throw createError.InternalServerError(
 			'必要な環境変数が設定されていません。',
 		)
 	}
 
-	const parsedInput = inputSchema.safeParse(event)
+	const token = event.headers.authorization?.split(' ')[1]
+	if (!token) {
+		throw new createError.Forbidden()
+	}
+
+	const isTokeValid = await isTokenValid(
+		token,
+		process.env.COGNITO_USER_POOL_ID,
+		process.env.COGNITO_USER_POOL_CLIENT_ID,
+	)
+	if (!isTokeValid) {
+		throw new createError.Forbidden()
+	}
+
+	const parsedInput = inputSchema.safeParse(event.body)
 	if (!parsedInput.success) {
 		const errors = parsedInput.error.issues
 			.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
@@ -57,7 +83,7 @@ const lambdaHandler: APIGatewayProxyHandlerV2 = async (event) => {
 		ConditionExpression: 'attribute_not_exists(id)',
 	})
 
-	const [error, _] = await to(ddbDocClient.send(command))
+	const [error] = await to(ddbDocClient.send(command))
 	if (error) {
 		if (error instanceof ConditionalCheckFailedException) {
 			throw new createError.BadRequest('もう一度実行してください。')
@@ -87,6 +113,8 @@ export const handler = middy(lambdaHandler)
 			logEvent: true,
 		}),
 	)
+	.use(httpHeaderNormalizer())
+	.use(httpJsonBodyParser())
 	.use(
 		httpErrorHandler({
 			logger: (error) => {
