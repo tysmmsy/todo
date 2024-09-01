@@ -111,3 +111,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# pathpida
+lib/$path.ts
