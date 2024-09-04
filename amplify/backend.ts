@@ -1,4 +1,10 @@
 import { defineBackend } from '@aws-amplify/backend'
+import type { AddEnvironmentFactory } from '@aws-amplify/backend-function'
+import type {
+	FunctionResources,
+	ResourceAccessAcceptorFactory,
+	ResourceProvider,
+} from '@aws-amplify/plugin-types'
 import { RemovalPolicy, Stack, aws_dynamodb } from 'aws-cdk-lib'
 import {
 	CorsHttpMethod,
@@ -10,6 +16,7 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam'
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { auth } from './auth/resource'
+import { deleteTodoFunction } from './functions/todo/deleteTodo/resource'
 import { postTodoFunction } from './functions/todo/postTodo/resource'
 import { putTodoFunction } from './functions/todo/putTodo/resource'
 
@@ -17,6 +24,7 @@ const backend = defineBackend({
 	auth,
 	postTodoFunction,
 	putTodoFunction,
+	deleteTodoFunction,
 })
 
 /**
@@ -35,45 +43,57 @@ export const todoTable = new aws_dynamodb.Table(
 )
 todoTable.grantWriteData(backend.postTodoFunction.resources.lambda)
 todoTable.grantWriteData(backend.putTodoFunction.resources.lambda)
+todoTable.grantWriteData(backend.deleteTodoFunction.resources.lambda)
 
 /**
  * Lambda ロググループ設定
  */
-// TODO: Lambdaごとにやると手間なため、後で改善する
-new LogGroup(backend.postTodoFunction.resources.lambda, 'PostTodoFnLogGroup', {
-	logGroupName: `/aws/lambda/${backend.postTodoFunction.resources.lambda.functionName}`,
-	retention: RetentionDays.ONE_DAY,
-})
+const createLogGroup = (
+	lambdaFunction: Omit<
+		ResourceProvider<FunctionResources> &
+			ResourceAccessAcceptorFactory &
+			AddEnvironmentFactory,
+		'getResourceAccessAcceptor'
+	>,
+	logGroupName: string,
+) => {
+	new LogGroup(lambdaFunction.resources.lambda, logGroupName, {
+		logGroupName: `/aws/lambda/${lambdaFunction.resources.lambda.functionName}`,
+		retention: RetentionDays.ONE_DAY,
+	})
+}
 
-new LogGroup(backend.putTodoFunction.resources.lambda, 'PutTodoFnLogGroup', {
-	logGroupName: `/aws/lambda/${backend.putTodoFunction.resources.lambda.functionName}`,
-	retention: RetentionDays.ONE_DAY,
-})
+createLogGroup(backend.postTodoFunction, 'PostTodoFnLogGroup')
+createLogGroup(backend.putTodoFunction, 'PutTodoFnLogGroup')
+createLogGroup(backend.deleteTodoFunction, 'DeleteTodoFnLogGroup')
 
 /**
  * Lambda 環境変数設定
  */
-backend.postTodoFunction.addEnvironment(
-	'COGNITO_USER_POOL_CLIENT_ID',
-	backend.auth.resources.userPoolClient.userPoolClientId,
-)
-backend.postTodoFunction.addEnvironment(
-	'COGNITO_USER_POOL_ID',
-	backend.auth.resources.userPool.userPoolId,
-)
-backend.postTodoFunction.addEnvironment('TODO_TABLE_NAME', todoTable.tableName)
-backend.postTodoFunction.addEnvironment('POWERTOOLS_LOG_LEVEL', 'DEBUG')
 
-backend.putTodoFunction.addEnvironment(
-	'COGNITO_USER_POOL_CLIENT_ID',
-	backend.auth.resources.userPoolClient.userPoolClientId,
-)
-backend.putTodoFunction.addEnvironment(
-	'COGNITO_USER_POOL_ID',
-	backend.auth.resources.userPool.userPoolId,
-)
-backend.putTodoFunction.addEnvironment('TODO_TABLE_NAME', todoTable.tableName)
-backend.putTodoFunction.addEnvironment('POWERTOOLS_LOG_LEVEL', 'DEBUG')
+const addCommonEnvironmentVariables = (
+	lambdaFunction: Omit<
+		ResourceProvider<FunctionResources> &
+			ResourceAccessAcceptorFactory &
+			AddEnvironmentFactory,
+		'getResourceAccessAcceptor'
+	>,
+) => {
+	lambdaFunction.addEnvironment(
+		'COGNITO_USER_POOL_CLIENT_ID',
+		backend.auth.resources.userPoolClient.userPoolClientId,
+	)
+	lambdaFunction.addEnvironment(
+		'COGNITO_USER_POOL_ID',
+		backend.auth.resources.userPool.userPoolId,
+	)
+	lambdaFunction.addEnvironment('TODO_TABLE_NAME', todoTable.tableName)
+	lambdaFunction.addEnvironment('POWERTOOLS_LOG_LEVEL', 'DEBUG')
+}
+
+addCommonEnvironmentVariables(backend.postTodoFunction)
+addCommonEnvironmentVariables(backend.putTodoFunction)
+addCommonEnvironmentVariables(backend.deleteTodoFunction)
 
 /**
  * API Gateway
@@ -97,7 +117,7 @@ const httpApi = new HttpApi(apiStack, 'HttpApi', {
 			// CorsHttpMethod.GET,
 			CorsHttpMethod.POST,
 			CorsHttpMethod.PUT,
-			// CorsHttpMethod.DELETE,
+			CorsHttpMethod.DELETE,
 		],
 		allowOrigins: ['*'],
 		allowHeaders: ['*'],
@@ -105,27 +125,33 @@ const httpApi = new HttpApi(apiStack, 'HttpApi', {
 	createDefaultStage: true,
 })
 
-const postIntegration = new HttpLambdaIntegration(
-	'postIntegration',
-	backend.postTodoFunction.resources.lambda,
-)
-
 httpApi.addRoutes({
 	path: '/todo',
 	methods: [HttpMethod.POST],
-	integration: postIntegration,
+	integration: new HttpLambdaIntegration(
+		'postIntegration',
+		backend.postTodoFunction.resources.lambda,
+	),
 	authorizer: userPoolAuthorizer,
 })
-
-const putIntegration = new HttpLambdaIntegration(
-	'putIntegration',
-	backend.putTodoFunction.resources.lambda,
-)
 
 httpApi.addRoutes({
 	path: '/todo/{id}',
 	methods: [HttpMethod.PUT],
-	integration: putIntegration,
+	integration: new HttpLambdaIntegration(
+		'putIntegration',
+		backend.putTodoFunction.resources.lambda,
+	),
+	authorizer: userPoolAuthorizer,
+})
+
+httpApi.addRoutes({
+	path: '/todo/{id}',
+	methods: [HttpMethod.DELETE],
+	integration: new HttpLambdaIntegration(
+		'deleteIntegration',
+		backend.deleteTodoFunction.resources.lambda,
+	),
 	authorizer: userPoolAuthorizer,
 })
 
@@ -136,6 +162,7 @@ const apiPolicy = new Policy(apiStack, 'ApiPolicy', {
 			resources: [
 				`${httpApi.arnForExecuteApi('POST', '/todo')}`,
 				`${httpApi.arnForExecuteApi('PUT', '/todo/{id}')}`,
+				`${httpApi.arnForExecuteApi('DELETE', '/todo/{id}')}`,
 			],
 		}),
 	],

@@ -27,6 +27,11 @@ const schema = a.schema({
 		content: a.string().required(),
 		updatedAt: a.datetime().required(),
 	}),
+
+	/** TODO削除 返却用の型 */
+	ResponseDeleteTodo: a.customType({
+		id: a.string().required(),
+	}),
 })
 
 export type Schema = ClientSchema<typeof schema>
