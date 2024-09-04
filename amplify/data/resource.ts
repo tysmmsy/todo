@@ -6,6 +6,7 @@ const schema = a.schema({
 		id: a.string().required(),
 		title: a.string(),
 		content: a.string().required(),
+		owner: a.string().required(),
 		createdAt: a.datetime().required(),
 		updatedAt: a.datetime().required(),
 	}),

@@ -9,9 +9,6 @@ export const isTokenValid = async (
 	userPoolId: string,
 	userPoolClientId: string,
 ): Promise<boolean> => {
-	logger.debug('token', token)
-	logger.debug('userPoolId', userPoolId)
-	logger.debug('userPoolClientId', userPoolClientId)
 	const verifier = CognitoJwtVerifier.create({
 		userPoolId: userPoolId,
 		tokenUse: 'access',
@@ -22,7 +19,7 @@ export const isTokenValid = async (
 		await verifier.verify(token)
 		return true
 	} catch (error) {
-		logger.debug('検証失敗', { error })
+		logger.debug('検証処理に失敗しました。', { error })
 		return false
 	}
 }

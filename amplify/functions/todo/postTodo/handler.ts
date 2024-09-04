@@ -2,7 +2,6 @@ import { injectLambdaContext } from '@aws-lambda-powertools/logger/middleware'
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
 import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import middy from '@middy/core'
-import httpErrorHandler from '@middy/http-error-handler'
 import httpHeaderNormalizer from '@middy/http-header-normalizer'
 import httpJsonBodyParser from '@middy/http-json-body-parser'
 import { to } from 'await-to-js'
@@ -65,7 +64,7 @@ const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
 		const errors = parsedInput.error.issues
 			.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
 			.join(', ')
-		throw createError.BadRequest(`リクエスト形式が想定と異なります: ${errors}`)
+		throw createError.BadRequest(`リクエスト形式が想定と異なります。 ${errors}`)
 	}
 
 	const id = ulid()
@@ -77,6 +76,7 @@ const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
 			id,
 			title: parsedInput.data.title,
 			content: parsedInput.data.content,
+			owner: `${event.requestContext.authorizer.jwt.claims.sub}::${event.requestContext.authorizer.jwt.claims.username}`,
 			createdAt: executionTime,
 			updatedAt: executionTime,
 		},
@@ -88,6 +88,8 @@ const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
 		if (error instanceof ConditionalCheckFailedException) {
 			throw new createError.BadRequest('もう一度実行してください。')
 		}
+
+		logger.error('DynamoDB更新中に内部エラーが発生しました。', { error })
 		throw new createError.InternalServerError(
 			'DynamoDB更新中に内部エラーが発生しました。',
 		)
@@ -115,21 +117,3 @@ export const handler = middy(lambdaHandler)
 	)
 	.use(httpHeaderNormalizer())
 	.use(httpJsonBodyParser())
-	.use(
-		httpErrorHandler({
-			logger: (error) => {
-				const { statusCode } = error
-				if (typeof statusCode === 'number' && statusCode < 500) {
-					logger.warn(error?.message ?? 'エラーが発生しました', {
-						error,
-						statusCode,
-					})
-					return
-				}
-				logger.error(error?.message ?? 'エラーが発生しました', {
-					error,
-					statusCode,
-				})
-			},
-		}),
-	)
