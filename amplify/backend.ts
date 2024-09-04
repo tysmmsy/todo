@@ -17,11 +17,13 @@ import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam'
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { auth } from './auth/resource'
 import { deleteTodoFunction } from './functions/todo/deleteTodo/resource'
+import { listTodoFunction } from './functions/todo/listTodo/resource'
 import { postTodoFunction } from './functions/todo/postTodo/resource'
 import { putTodoFunction } from './functions/todo/putTodo/resource'
 
 const backend = defineBackend({
 	auth,
+	listTodoFunction,
 	postTodoFunction,
 	putTodoFunction,
 	deleteTodoFunction,
@@ -41,6 +43,14 @@ export const todoTable = new aws_dynamodb.Table(
 		removalPolicy: RemovalPolicy.DESTROY,
 	},
 )
+
+todoTable.addGlobalSecondaryIndex({
+	indexName: 'gsi-OwnerTodo',
+	partitionKey: { name: 'owner', type: aws_dynamodb.AttributeType.STRING },
+	projectionType: aws_dynamodb.ProjectionType.ALL,
+})
+
+todoTable.grantReadData(backend.listTodoFunction.resources.lambda)
 todoTable.grantWriteData(backend.postTodoFunction.resources.lambda)
 todoTable.grantWriteData(backend.putTodoFunction.resources.lambda)
 todoTable.grantWriteData(backend.deleteTodoFunction.resources.lambda)
@@ -63,6 +73,7 @@ const createLogGroup = (
 	})
 }
 
+createLogGroup(backend.listTodoFunction, 'listTodoFnLogGroup')
 createLogGroup(backend.postTodoFunction, 'PostTodoFnLogGroup')
 createLogGroup(backend.putTodoFunction, 'PutTodoFnLogGroup')
 createLogGroup(backend.deleteTodoFunction, 'DeleteTodoFnLogGroup')
@@ -91,6 +102,7 @@ const addCommonEnvironmentVariables = (
 	lambdaFunction.addEnvironment('POWERTOOLS_LOG_LEVEL', 'DEBUG')
 }
 
+addCommonEnvironmentVariables(backend.listTodoFunction)
 addCommonEnvironmentVariables(backend.postTodoFunction)
 addCommonEnvironmentVariables(backend.putTodoFunction)
 addCommonEnvironmentVariables(backend.deleteTodoFunction)
@@ -114,7 +126,7 @@ const httpApi = new HttpApi(apiStack, 'HttpApi', {
 	apiName: 'myHttpApi',
 	corsPreflight: {
 		allowMethods: [
-			// CorsHttpMethod.GET,
+			CorsHttpMethod.GET,
 			CorsHttpMethod.POST,
 			CorsHttpMethod.PUT,
 			CorsHttpMethod.DELETE,
@@ -123,6 +135,16 @@ const httpApi = new HttpApi(apiStack, 'HttpApi', {
 		allowHeaders: ['*'],
 	},
 	createDefaultStage: true,
+})
+
+httpApi.addRoutes({
+	path: '/todo',
+	methods: [HttpMethod.GET],
+	integration: new HttpLambdaIntegration(
+		'listIntegration',
+		backend.listTodoFunction.resources.lambda,
+	),
+	authorizer: userPoolAuthorizer,
 })
 
 httpApi.addRoutes({
@@ -160,6 +182,7 @@ const apiPolicy = new Policy(apiStack, 'ApiPolicy', {
 		new PolicyStatement({
 			actions: ['execute-api:Invoke'],
 			resources: [
+				`${httpApi.arnForExecuteApi('GET', '/todo')}`,
 				`${httpApi.arnForExecuteApi('POST', '/todo')}`,
 				`${httpApi.arnForExecuteApi('PUT', '/todo/{id}')}`,
 				`${httpApi.arnForExecuteApi('DELETE', '/todo/{id}')}`,

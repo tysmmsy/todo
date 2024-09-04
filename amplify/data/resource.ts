@@ -11,6 +11,17 @@ const schema = a.schema({
 		updatedAt: a.datetime().required(),
 	}),
 
+	ListTodos: a.customType({
+		id: a.string().required(),
+		title: a.string().required(),
+		content: a.string().required(),
+	}),
+
+	/** TODO一覧取得 返却用の型 */
+	ResponseListTodo: a.customType({
+		todos: a.ref('ListTodos').array(),
+	}),
+
 	/** TODO登録 返却用の型 */
 	ResponsePostTodo: a.customType({
 		id: a.string().required(),
