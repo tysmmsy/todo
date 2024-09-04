@@ -6,7 +6,11 @@ import httpErrorHandler from '@middy/http-error-handler'
 import httpHeaderNormalizer from '@middy/http-header-normalizer'
 import httpJsonBodyParser from '@middy/http-json-body-parser'
 import { to } from 'await-to-js'
-import type { APIGatewayProxyHandlerV2WithJWTAuthorizer } from 'aws-lambda'
+import type {
+	APIGatewayProxyEventV2WithJWTAuthorizer,
+	APIGatewayProxyHandlerV2WithJWTAuthorizer,
+	APIGatewayProxyResultV2,
+} from 'aws-lambda'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -35,8 +39,8 @@ const resultSchema = z.object({
 type ResponsePutTodo = Schema['ResponsePutTodo']['type']
 
 export const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
-	event,
-) => {
+	event: APIGatewayProxyEventV2WithJWTAuthorizer,
+): Promise<APIGatewayProxyResultV2> => {
 	if (
 		!process.env.TODO_TABLE_NAME ||
 		!process.env.COGNITO_USER_POOL_ID ||

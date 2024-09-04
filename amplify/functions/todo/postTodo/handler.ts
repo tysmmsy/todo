@@ -9,7 +9,7 @@ import { to } from 'await-to-js'
 import type {
 	APIGatewayProxyEventV2WithJWTAuthorizer,
 	APIGatewayProxyHandlerV2WithJWTAuthorizer,
-	APIGatewayProxyResult,
+	APIGatewayProxyResultV2,
 } from 'aws-lambda'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -37,7 +37,7 @@ type ResponsePostTodo = Schema['ResponsePostTodo']['type']
 
 const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
 	event: APIGatewayProxyEventV2WithJWTAuthorizer,
-): Promise<APIGatewayProxyResult> => {
+): Promise<APIGatewayProxyResultV2> => {
 	if (
 		!process.env.TODO_TABLE_NAME ||
 		!process.env.COGNITO_USER_POOL_ID ||
