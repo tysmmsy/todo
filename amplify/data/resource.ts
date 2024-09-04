@@ -19,6 +19,14 @@ const schema = a.schema({
 		createdAt: a.datetime().required(),
 		updatedAt: a.datetime().required(),
 	}),
+
+	/** TODO更新 返却用の型 */
+	ResponsePutTodo: a.customType({
+		id: a.string().required(),
+		title: a.string().required(),
+		content: a.string().required(),
+		updatedAt: a.datetime().required(),
+	}),
 })
 
 export type Schema = ClientSchema<typeof schema>
