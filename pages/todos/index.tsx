@@ -1,7 +1,29 @@
 import PageContainer from '@/layout/PageContainer'
 import { Box, Button, Typography } from '@mui/material'
-import { del, post, put } from 'aws-amplify/api'
+import { del, get, post, put } from 'aws-amplify/api'
 import { fetchAuthSession, signOut } from 'aws-amplify/auth'
+
+const listTodo = async () => {
+	try {
+		const restOperation = get({
+			apiName: 'myHttpApi',
+			path: 'todo',
+			options: {
+				headers: {
+					Authorization: `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`,
+				},
+			},
+		})
+
+		const { body } = await restOperation.response
+		const response = await body.json()
+
+		console.log('post call succeeded', response)
+	} catch (error) {
+		// TODO: コンポーネント化するときにエラーを表示するように
+		console.log(error)
+	}
+}
 
 const postTodo = async () => {
 	try {
@@ -87,6 +109,9 @@ const Todos = function Page() {
 				<Typography variant='h6'>サインイン成功</Typography>
 				<Button variant='contained' onClick={() => signOut()} sx={{ mt: 2 }}>
 					ログアウト
+				</Button>
+				<Button variant='contained' onClick={listTodo} sx={{ mt: 2 }}>
+					取得(リスト)
 				</Button>
 				<Button variant='contained' onClick={postTodo} sx={{ mt: 2 }}>
 					追加
