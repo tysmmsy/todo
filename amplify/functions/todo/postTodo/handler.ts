@@ -2,6 +2,7 @@ import { injectLambdaContext } from '@aws-lambda-powertools/logger/middleware'
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
 import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import middy from '@middy/core'
+import httpErrorHandler from '@middy/http-error-handler'
 import httpHeaderNormalizer from '@middy/http-header-normalizer'
 import httpJsonBodyParser from '@middy/http-json-body-parser'
 import { to } from 'await-to-js'
@@ -26,7 +27,10 @@ dayjs.extend(timezone)
 
 const inputSchema = z.object({
 	title: z.string(),
-	content: z.string().min(1, 'コンテンツは必須です'),
+	content: z
+		.string()
+		.min(1, { message: 'コンテンツは必須です' })
+		.max(100, { message: 'コンテンツの条件は100文字です' }),
 })
 
 type ResponsePostTodo = Schema['ResponsePostTodo']['type']
@@ -117,3 +121,21 @@ export const handler = middy(lambdaHandler)
 	)
 	.use(httpHeaderNormalizer())
 	.use(httpJsonBodyParser())
+	.use(
+		httpErrorHandler({
+			logger: (error) => {
+				const { statusCode } = error
+				if (typeof statusCode === 'number' && statusCode < 500) {
+					logger.warn(error?.message ?? 'エラーが発生しました', {
+						error,
+						statusCode,
+					})
+					return
+				}
+				logger.error(error?.message ?? 'エラーが発生しました', {
+					error,
+					statusCode,
+				})
+			},
+		}),
+	)
