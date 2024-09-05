@@ -17,8 +17,27 @@ const listTodo = async () => {
 
 		const { body } = await restOperation.response
 		const response = await body.json()
+	} catch (error) {
+		// TODO: コンポーネント化するときにエラーを表示するように
+		console.log(error)
+	}
+}
 
-		console.log('post call succeeded', response)
+const searchTodo = async () => {
+	try {
+		const restOperation = get({
+			apiName: 'myHttpApi',
+			path: 'todo/search?searchField=content&query=test',
+			// path: 'todo/search?searchField=title&query=テスト',
+			options: {
+				headers: {
+					Authorization: `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`,
+				},
+			},
+		})
+
+		const { body } = await restOperation.response
+		const response = await body.json()
 	} catch (error) {
 		// TODO: コンポーネント化するときにエラーを表示するように
 		console.log(error)
@@ -44,8 +63,6 @@ const postTodo = async () => {
 
 		const { body } = await restOperation.response
 		const response = await body.json()
-
-		console.log('post call succeeded', response)
 	} catch (error) {
 		// TODO: コンポーネント化するときにエラーを表示するように
 		console.log(error)
@@ -72,8 +89,6 @@ const putTodo = async () => {
 
 		const { body } = await restOperation.response
 		const response = await body.json()
-
-		console.log('put call succeeded', response)
 	} catch (error) {
 		// TODO: コンポーネント化するときにエラーを表示するように
 		console.log(error)
@@ -94,8 +109,6 @@ const deleteTodo = async () => {
 		})
 
 		const response = await restOperation.response
-
-		console.log('del call succeeded', response)
 	} catch (error) {
 		// TODO: コンポーネント化するときにエラーを表示するように
 		console.log(error)
@@ -112,6 +125,9 @@ const Todos = function Page() {
 				</Button>
 				<Button variant='contained' onClick={listTodo} sx={{ mt: 2 }}>
 					取得(リスト)
+				</Button>
+				<Button variant='contained' onClick={searchTodo} sx={{ mt: 2 }}>
+					検索
 				</Button>
 				<Button variant='contained' onClick={postTodo} sx={{ mt: 2 }}>
 					追加
