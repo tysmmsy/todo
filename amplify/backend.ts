@@ -20,10 +20,12 @@ import { deleteTodoFunction } from './functions/todo/deleteTodo/resource'
 import { listTodoFunction } from './functions/todo/listTodo/resource'
 import { postTodoFunction } from './functions/todo/postTodo/resource'
 import { putTodoFunction } from './functions/todo/putTodo/resource'
+import { searchTodoFunction } from './functions/todo/searchTodo/resource'
 
 const backend = defineBackend({
 	auth,
 	listTodoFunction,
+	searchTodoFunction,
 	postTodoFunction,
 	putTodoFunction,
 	deleteTodoFunction,
@@ -51,6 +53,7 @@ todoTable.addGlobalSecondaryIndex({
 })
 
 todoTable.grantReadData(backend.listTodoFunction.resources.lambda)
+todoTable.grantReadData(backend.searchTodoFunction.resources.lambda)
 todoTable.grantWriteData(backend.postTodoFunction.resources.lambda)
 todoTable.grantWriteData(backend.putTodoFunction.resources.lambda)
 todoTable.grantWriteData(backend.deleteTodoFunction.resources.lambda)
@@ -74,6 +77,7 @@ const createLogGroup = (
 }
 
 createLogGroup(backend.listTodoFunction, 'listTodoFnLogGroup')
+createLogGroup(backend.searchTodoFunction, 'searchTodoFnLogGroup')
 createLogGroup(backend.postTodoFunction, 'PostTodoFnLogGroup')
 createLogGroup(backend.putTodoFunction, 'PutTodoFnLogGroup')
 createLogGroup(backend.deleteTodoFunction, 'DeleteTodoFnLogGroup')
@@ -103,6 +107,7 @@ const addCommonEnvironmentVariables = (
 }
 
 addCommonEnvironmentVariables(backend.listTodoFunction)
+addCommonEnvironmentVariables(backend.searchTodoFunction)
 addCommonEnvironmentVariables(backend.postTodoFunction)
 addCommonEnvironmentVariables(backend.putTodoFunction)
 addCommonEnvironmentVariables(backend.deleteTodoFunction)
@@ -143,6 +148,16 @@ httpApi.addRoutes({
 	integration: new HttpLambdaIntegration(
 		'listIntegration',
 		backend.listTodoFunction.resources.lambda,
+	),
+	authorizer: userPoolAuthorizer,
+})
+
+httpApi.addRoutes({
+	path: '/todo/search',
+	methods: [HttpMethod.GET],
+	integration: new HttpLambdaIntegration(
+		'searchIntegration',
+		backend.searchTodoFunction.resources.lambda,
 	),
 	authorizer: userPoolAuthorizer,
 })
