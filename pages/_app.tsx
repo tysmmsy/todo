@@ -21,7 +21,7 @@ Amplify.configure({
 
 export default function App({ Component, pageProps }: AppProps) {
 	return (
-		<Authenticator>
+		<Authenticator hideSignUp>
 			<AppCacheProvider {...Component}>
 				<CssBaseline />
 				<RootLayout>

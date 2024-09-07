@@ -13,6 +13,7 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2'
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
+import type { CfnUserPoolClient } from 'aws-cdk-lib/aws-cognito'
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam'
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { auth } from './auth/resource'
@@ -30,6 +31,24 @@ const backend = defineBackend({
 	putTodoFunction,
 	deleteTodoFunction,
 })
+
+/**
+ * Cognito
+ */
+backend.auth.resources.cfnResources.cfnUserPool.adminCreateUserConfig = {
+	allowAdminCreateUserOnly: true,
+}
+const cfnUserPoolClient = backend.auth.resources.userPoolClient.node
+	.defaultChild as CfnUserPoolClient
+
+cfnUserPoolClient.addPropertyOverride('ExplicitAuthFlows', [
+	// デフォルトで許可されているもの
+	'ALLOW_CUSTOM_AUTH',
+	'ALLOW_USER_SRP_AUTH',
+	// cliからアクセストークンを取得するために設定
+	'ALLOW_ADMIN_USER_PASSWORD_AUTH',
+	'ALLOW_REFRESH_TOKEN_AUTH',
+])
 
 /**
  * DynamoDB
