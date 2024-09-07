@@ -24,7 +24,7 @@ doc:
     phases:
       build:
         commands:
-          - npx @redocly/cli build-docs api.yaml -o .out/index.html
+          - npx @redocly/cli build-docs ./doc/api.yaml -o .out/index.html
     artifacts:
       files:
         - index.html
