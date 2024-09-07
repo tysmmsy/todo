@@ -1,40 +1,88 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Todo API
 
-## Getting Started
+- [API仕様書](./doc/api.yaml)
 
-First, run the development server:
+- アーキテクチャ
+![アーキテクチャ](./doc/architecture.drawio.png)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 動作確認
+
+<https://main.d29gh21gyaw6hg.amplifyapp.com/> からログイン
+
+## 動作確認(powershell版)
+
+- AWS Cognitoからアクセストークンを取得
+
+```powershell
+# Cognitoからアクセストークンを取得
+$authResult = aws cognito-idp admin-initiate-auth `
+  --user-pool-id <user-pool-id> `
+  --client-id <client-id> `
+  --auth-flow ADMIN_USER_PASSWORD_AUTH `
+  --auth-parameters USERNAME=<username>,PASSWORD=<password> | ConvertFrom-Json
+
+$accessToken = $authResult.AuthenticationResult.AccessToken
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Todo登録
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+#### リクエストボディ
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+```powershell
+$body = @{
+    "title" = "New Todo"
+    "content" = "test"
+} | ConvertTo-Json
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+Invoke-RestMethod -Uri "https://x5p1ympye3.execute-api.ap-northeast-1.amazonaws.com/todo" `
+  -Headers @{ Authorization = "Bearer $accessToken"; "Content-Type" = "application/json" } `
+  -Method Post `
+  -Body $body
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### Todo一覧取得
 
-## Learn More
+```powershell
+Invoke-RestMethod -Uri "https://x5p1ympye3.execute-api.ap-northeast-1.amazonaws.com/todo" `
+  -Headers @{ Authorization = "Bearer $accessToken"; "Content-Type" = "application/json" } `
+  -Method Get
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Todo更新
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```powershell
+$id = "01J75PMS957EB2QPK28C9AB22V"
+$updateBody = @{
+    "title" = "Updated Todo"
+    "content" = "Completed"
+} | ConvertTo-Json
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Invoke-RestMethod -Uri "https://x5p1ympye3.execute-api.ap-northeast-1.amazonaws.com/todo/$id" `
+  -Headers @{ Authorization = "Bearer $accessToken"; "Content-Type" = "application/json" } `
+  -Method Put `
+  -Body $updateBody
+```
 
-## Deploy on Vercel
+### Todo削除
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+# 削除したいTodoのIDを指定
+$id = "01J75PMS957EB2QPK28C9AB22V"
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Invoke-RestMethod -Uri "https://x5p1ympye3.execute-api.ap-northeast-1.amazonaws.com/todo/$id" `
+  -Headers @{ Authorization = "Bearer $accessToken" } `
+  -Method Delete
+```
+
+### Todo検索
+
+```powershell
+# クエリパラメータの設定
+$searchField = "content"  # contentまたはtitleを指定
+$query = "test"           # 検索したいワード
+$queryParams = "?searchField=$searchField&query=$query"
+
+Invoke-RestMethod -Uri "https://x5p1ympye3.execute-api.ap-northeast-1.amazonaws.com/todo/search$queryParams" `
+  -Headers @{ Authorization = "Bearer $accessToken" } `
+  -Method Get
+```

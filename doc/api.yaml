@@ -1,0 +1,174 @@
+openapi: 3.0.0
+info:
+  title: Todo API
+  version: 1.0.0
+servers:
+  - url: https://x5p1ympye3.execute-api.ap-northeast-1.amazonaws.com
+
+paths:
+  /todo:
+    post:
+      summary: Todo登録
+      operationId: createTodo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  nullable: true
+                  example: NewTodo
+                content:
+                  type: string
+                  nullable: false
+                  maxLength: 100
+                  example: test
+      responses:
+        '201':
+          description: Todo item successfully created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+      security:
+        - bearerAuth: []
+
+    get:
+      summary: Todo一覧取得
+      operationId: listTodos
+      responses:
+        '200':
+          description: Todo一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: 01J75PMS957EB2QPK28C9AB22V
+                    title:
+                      type: string
+                      example: NewTodo
+                    content:
+                      type: string
+                      example: test
+        '401':
+          description: Unauthorized
+      security:
+        - bearerAuth: []
+
+  /todo/search:
+    get:
+      summary: Todo検索
+      operationId: searchTodos
+      description: 検索ワードから始まるアイテムを返却
+      parameters:
+        - name: searchField
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [title, content]
+          description: titleまたはcontentを指定
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 検索ワードを指定
+      responses:
+        '200':
+          description: 検索ワードから始まるTodoを一覧で返却
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: 01J75PMS957EB2QPK28C9AB22V
+                    title:
+                      type: string
+                      example: Search Result Todo
+                    content:
+                      type: string
+                      example: test content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+      security:
+        - bearerAuth: []
+
+  /todo/{id}:
+    put:
+      summary: Todo更新
+      operationId: updateTodo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 更新したいTodoのidを指定
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  nullable: false
+                  example: Updated Todo
+                content:
+                  type: string
+                  nullable: false
+                  minLength: 1
+                  maxLength: 100
+                  example: Completed
+      responses:
+        '200':
+          description: Todo item successfully updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+      security:
+        - bearerAuth: []
+
+    delete:
+      summary: Todo削除
+      operationId: deleteTodo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 削除したいTodoのidを指定
+      responses:
+        '200':
+          description: Todo item successfully deleted
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+      security:
+        - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
