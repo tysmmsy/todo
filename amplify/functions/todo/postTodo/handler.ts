@@ -108,7 +108,7 @@ const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
 	}
 
 	return {
-		statusCode: 200,
+		statusCode: 201,
 		body: JSON.stringify(response),
 	}
 }
