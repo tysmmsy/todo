@@ -1,6 +1,7 @@
 import styled from '@emotion/styled'
 import { Box, Button, Typography } from '@mui/material'
-import { signOut } from 'aws-amplify/auth'
+import { fetchUserAttributes, signOut } from 'aws-amplify/auth'
+import { useEffect, useState } from 'react'
 
 const PageWrapper = styled('div')(() => ({
 	display: 'flex',
@@ -31,6 +32,24 @@ const Header = styled(Box)(() => ({
 export default function RootLayout({
 	children,
 }: { children: React.ReactNode }) {
+	const [userEmail, setEmail] = useState<string>('')
+
+	useEffect(() => {
+		const fetchUser = async () => {
+			try {
+				const user = await fetchUserAttributes()
+				if (!user.email) {
+					throw Error('クライアント情報の取得に失敗しました。')
+				}
+				setEmail(user.email)
+			} catch (error) {
+				console.error('Error fetching user:', error)
+			}
+		}
+
+		fetchUser()
+	}, [])
+
 	return (
 		<>
 			<Header>
@@ -49,8 +68,11 @@ export default function RootLayout({
 				<Box
 					sx={{
 						marginRight: { xs: '20px', sm: '30px', md: '50px' },
+						display: 'flex',
+						alignItems: 'center',
 					}}
 				>
+					<Typography sx={{ mr: 2 }}>{userEmail}</Typography>
 					<Button
 						variant='text'
 						onClick={() => signOut()}
