@@ -51,6 +51,7 @@ const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
 		throw new createError.Forbidden()
 	}
 
+	// NOTE: ページネーションの考慮が必要
 	const command = new QueryCommand({
 		TableName: process.env.TODO_TABLE_NAME,
 		IndexName: 'gsi-OwnerTodo',
