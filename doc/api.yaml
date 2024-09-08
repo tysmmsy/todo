@@ -19,7 +19,7 @@ paths:
               properties:
                 title:
                   type: string
-                  nullable: true
+                  nullable: false
                   maxLength: 50
                   example: NewTodo
                 content:
