@@ -42,12 +42,7 @@ const lambdaHandler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (
 		throw new createError.Forbidden()
 	}
 
-	const isTokeValid = await isTokenValid(
-		token,
-		process.env.COGNITO_USER_POOL_ID,
-		process.env.COGNITO_USER_POOL_CLIENT_ID,
-	)
-	if (!isTokeValid) {
+	if (!(await isTokenValid(token))) {
 		throw new createError.Forbidden()
 	}
 
