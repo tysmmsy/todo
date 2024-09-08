@@ -1,143 +1,109 @@
+import { useTodos } from '@/api/useTodos'
+import TodoForm from '@/features/todos/TodoForm'
+import TodoList from '@/features/todos/TodoList'
 import PageContainer from '@/layout/PageContainer'
-import { Box, Button, Typography } from '@mui/material'
-import { del, get, post, put } from 'aws-amplify/api'
-import { fetchAuthSession, signOut } from 'aws-amplify/auth'
+import { Box, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
 
-const listTodo = async () => {
-	try {
-		const restOperation = get({
-			apiName: 'myHttpApi',
-			path: 'todo',
-			options: {
-				headers: {
-					Authorization: `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`,
-				},
-			},
-		})
-
-		const { body } = await restOperation.response
-		const response = await body.json()
-	} catch (error) {
-		// TODO: コンポーネント化するときにエラーを表示するように
-		console.log(error)
-	}
-}
-
-const searchTodo = async () => {
-	try {
-		const restOperation = get({
-			apiName: 'myHttpApi',
-			path: 'todo/search?searchField=content&query=test',
-			// path: 'todo/search?searchField=title&query=テスト',
-			options: {
-				headers: {
-					Authorization: `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`,
-				},
-			},
-		})
-
-		const { body } = await restOperation.response
-		const response = await body.json()
-	} catch (error) {
-		// TODO: コンポーネント化するときにエラーを表示するように
-		console.log(error)
-	}
-}
-
-const postTodo = async () => {
-	try {
-		const restOperation = post({
-			apiName: 'myHttpApi',
-			path: 'todo',
-			options: {
-				headers: {
-					Authorization: `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`,
-				},
-				body: {
-					// TODO: UIから入力できるようにする
-					title: '',
-					content: 'test',
-				},
-			},
-		})
-
-		const { body } = await restOperation.response
-		const response = await body.json()
-	} catch (error) {
-		// TODO: コンポーネント化するときにエラーを表示するように
-		console.log(error)
-	}
-}
-
-const putTodo = async () => {
-	try {
-		const restOperation = put({
-			apiName: 'myHttpApi',
-			// 動作確認用
-			path: 'todo/01J6YBY13N6FM5KZPM9E39CE10',
-			options: {
-				headers: {
-					Authorization: `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`,
-				},
-				body: {
-					// TODO: UIから入力できるようにする
-					title: 'test update title',
-					content: 'test update content'.repeat(1000),
-				},
-			},
-		})
-
-		const { body } = await restOperation.response
-		const response = await body.json()
-	} catch (error) {
-		// TODO: コンポーネント化するときにエラーを表示するように
-		console.log(error)
-	}
-}
-
-const deleteTodo = async () => {
-	try {
-		const restOperation = del({
-			apiName: 'myHttpApi',
-			// 動作確認用
-			path: 'todo/01J6YBY13N6FM5KZPM9E39CE10',
-			options: {
-				headers: {
-					Authorization: `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`,
-				},
-			},
-		})
-
-		const response = await restOperation.response
-	} catch (error) {
-		// TODO: コンポーネント化するときにエラーを表示するように
-		console.log(error)
-	}
+interface Todo {
+	id: string
+	title: string
+	content: string
 }
 
 const Todos = function Page() {
+	const {
+		todos: initialTodos,
+		error,
+		isLoading,
+		postTodo,
+		putTodo,
+		deleteTodo,
+	} = useTodos()
+	const [todos, setTodos] = useState<Todo[]>(initialTodos || [])
+
+	useEffect(() => {
+		if (initialTodos) {
+			setTodos(initialTodos)
+		}
+	}, [initialTodos])
+
+	const [editedTodos, setEditedTodos] = useState<{
+		[key: string]: { title: string; content: string }
+	}>({})
+
+	const handleUpdateTodo = (todo: Todo) => {
+		const updatedTodo = {
+			...todo,
+			title: editedTodos[todo.id]?.title || todo.title,
+			content: editedTodos[todo.id]?.content || todo.content,
+		}
+
+		setTodos((prevTodos) =>
+			prevTodos.map((t) => (t.id === todo.id ? updatedTodo : t)),
+		)
+
+		putTodo(todo.id, updatedTodo)
+
+		setEditedTodos((prevState) => ({
+			...prevState,
+			[todo.id]: { title: '', content: '' },
+		}))
+	}
+
+	const handleDeleteTodo = (id: string) => {
+		setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id))
+		deleteTodo(id)
+	}
+
+	const handleEditChange = (
+		id: string,
+		field: 'title' | 'content',
+		value: string,
+	) => {
+		setEditedTodos((prevState) => ({
+			...prevState,
+			[id]: {
+				...prevState[id],
+				[field]: value,
+			},
+		}))
+	}
+
+	if (isLoading) return <Typography>Loading...</Typography>
+	if (error) return <Typography>Error: {error.message}</Typography>
+
 	return (
-		<PageContainer title='todo'>
-			<Box alignItems='center'>
-				<Typography variant='h6'>サインイン成功</Typography>
-				<Button variant='contained' onClick={() => signOut()} sx={{ mt: 2 }}>
-					ログアウト
-				</Button>
-				<Button variant='contained' onClick={listTodo} sx={{ mt: 2 }}>
-					取得(リスト)
-				</Button>
-				<Button variant='contained' onClick={searchTodo} sx={{ mt: 2 }}>
-					検索
-				</Button>
-				<Button variant='contained' onClick={postTodo} sx={{ mt: 2 }}>
-					追加
-				</Button>
-				<Button variant='contained' onClick={putTodo} sx={{ mt: 2 }}>
-					更新
-				</Button>
-				<Button variant='contained' onClick={deleteTodo} sx={{ mt: 2 }}>
-					削除
-				</Button>
+		<PageContainer title='Todo'>
+			<Box
+				sx={{
+					width: '100%',
+					paddingTop: '150px',
+					maxWidth: 'auto',
+					margin: '0 auto',
+				}}
+			>
+				<TodoForm postTodo={postTodo} />
+			</Box>
+
+			<Box
+				sx={{
+					width: '100%',
+					maxWidth: 'auto',
+					overflowY: 'auto',
+					maxHeight: '60vh',
+					mt: 4,
+					margin: '0 auto',
+					minWidth: todos.length === 0 ? '485px' : 'auto',
+				}}
+			>
+				<TodoList
+					todos={todos}
+					editedTodos={editedTodos}
+					handleEditChange={handleEditChange}
+					handleUpdateTodo={handleUpdateTodo}
+					handleDeleteTodo={handleDeleteTodo}
+				/>
 			</Box>
 		</PageContainer>
 	)
