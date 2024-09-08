@@ -98,7 +98,7 @@ const TodoList = ({
 					</Box>
 				))
 			) : (
-				<Typography>no Todos. add your first Todo!</Typography>
+				<Typography>no Todos.</Typography>
 			)}
 		</Box>
 	)

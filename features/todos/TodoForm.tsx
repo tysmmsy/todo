@@ -36,7 +36,7 @@ const TodoForm = ({ postTodo }: TodoFormProps) => {
 					onChange={(e) => setContent(e.target.value)}
 					fullWidth
 					multiline
-					rows={4}
+					rows={2}
 					sx={{
 						mt: 2,
 						borderRadius: '8px',

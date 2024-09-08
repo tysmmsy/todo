@@ -128,5 +128,33 @@ export const useTodos = () => {
 		}
 	}
 
-	return { todos, error, isLoading, postTodo, putTodo, deleteTodo }
+	const searchTodo = async (
+		searchField: 'title' | 'content',
+		query: string,
+	) => {
+		const token = `Bearer ${(await fetchAuthSession()).tokens?.accessToken}`
+		const queryParams = `?searchField=${searchField}&query=${encodeURIComponent(query)}`
+
+		const restOperation = get({
+			apiName: 'myHttpApi',
+			path: `todo/search${queryParams}`,
+			options: {
+				headers: {
+					Authorization: token,
+				},
+			},
+		})
+
+		const { body } = await restOperation.response
+		const jsonResponse: { todos?: Todo[] } = (await body.json()) as {
+			todos?: Todo[]
+		}
+
+		if (jsonResponse.todos) {
+			return jsonResponse.todos as Todo[]
+		}
+		return []
+	}
+
+	return { todos, error, isLoading, postTodo, putTodo, deleteTodo, searchTodo }
 }

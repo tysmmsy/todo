@@ -1,4 +1,5 @@
 import { useTodos } from '@/api/useTodos'
+import SearchForm from '@/features/todos/SearchForm'
 import TodoForm from '@/features/todos/TodoForm'
 import TodoList from '@/features/todos/TodoList'
 import PageContainer from '@/layout/PageContainer'
@@ -19,6 +20,7 @@ const Todos = function Page() {
 		postTodo,
 		putTodo,
 		deleteTodo,
+		searchTodo,
 	} = useTodos()
 	const [todos, setTodos] = useState<Todo[]>(initialTodos || [])
 
@@ -70,6 +72,18 @@ const Todos = function Page() {
 		}))
 	}
 
+	const handleSearch = async (
+		searchField: 'title' | 'content',
+		query: string,
+	) => {
+		const searchResults = await searchTodo(searchField, query)
+		setTodos(searchResults)
+	}
+
+	const handleFetchAll = () => {
+		setTodos(initialTodos || [])
+	}
+
 	if (isLoading) return <Typography>Loading...</Typography>
 	if (error) return <Typography>Error: {error.message}</Typography>
 
@@ -81,9 +95,14 @@ const Todos = function Page() {
 					paddingTop: '150px',
 					maxWidth: 'auto',
 					margin: '0 auto',
+					mb: 6,
 				}}
 			>
 				<TodoForm postTodo={postTodo} />
+			</Box>
+
+			<Box sx={{ mb: 2 }}>
+				<SearchForm onSearch={handleSearch} onFetchAll={handleFetchAll} />
 			</Box>
 
 			<Box
