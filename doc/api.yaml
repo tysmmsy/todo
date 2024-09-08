@@ -20,6 +20,7 @@ paths:
                 title:
                   type: string
                   nullable: true
+                  maxLength: 50
                   example: NewTodo
                 content:
                   type: string
@@ -129,6 +130,7 @@ paths:
                 title:
                   type: string
                   nullable: false
+                  maxLength: 50
                   example: Updated Todo
                 content:
                   type: string

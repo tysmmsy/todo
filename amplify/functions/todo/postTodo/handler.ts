@@ -26,11 +26,11 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 
 const inputSchema = z.object({
-	title: z.string(),
+	title: z.string().max(50, { message: 'タイトルの上限は50文字です' }),
 	content: z
 		.string()
 		.min(1, { message: 'コンテンツは必須です' })
-		.max(100, { message: 'コンテンツの条件は100文字です' }),
+		.max(100, { message: 'コンテンツの上限は100文字です' }),
 })
 
 type ResponsePostTodo = Schema['ResponsePostTodo']['type']

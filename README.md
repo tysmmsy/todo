@@ -1,6 +1,6 @@
 # Todo API
 
-- [API仕様書](./doc/api.yaml)
+- [API仕様書](https://main.d36a93ck3la7k2.amplifyapp.com/)
 
 - アーキテクチャ
 ![アーキテクチャ](./doc/architecture.drawio.png)
