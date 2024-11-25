@@ -35,7 +35,7 @@
 		"@aws-amplify/ui-react": "^6.2.0",
 		"@aws-lambda-powertools/logger": "^2.7.0",
 		"@aws-sdk/client-dynamodb": "^3.637.0",
-		"@aws-sdk/lib-dynamodb": "^3.637.0",
+		"@aws-sdk/lib-dynamodb": "^3.685.0",
 		"@emotion/cache": "^11.13.1",
 		"@emotion/react": "^11.13.3",
 		"@emotion/server": "^11.11.0",
