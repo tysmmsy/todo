@@ -43,7 +43,7 @@
 		"@middy/core": "^5.4.6",
 		"@middy/http-error-handler": "^5.5.1",
 		"@middy/http-header-normalizer": "^5.4.6",
-		"@middy/http-json-body-parser": "^5.4.6",
+		"@middy/http-json-body-parser": "^5.5.1",
 		"@mui/material": "^6.2.1",
 		"@mui/material-nextjs": "^6.3.0",
 		"@types/http-errors": "^2.0.4",
