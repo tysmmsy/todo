@@ -6,6 +6,7 @@ import RootLayout from '@/layout/layout'
 import { Authenticator } from '@aws-amplify/ui-react'
 import { CssBaseline } from '@mui/material'
 import { AppCacheProvider } from '@mui/material-nextjs/v13-pagesRouter'
+import { ThemeModeProvider } from '@/lib/ThemeContext'
 
 Amplify.configure(outputs, {
 	ssr: true,
@@ -23,10 +24,12 @@ export default function App({ Component, pageProps }: AppProps) {
 	return (
 		<Authenticator hideSignUp>
 			<AppCacheProvider {...Component}>
-				<CssBaseline />
-				<RootLayout>
-					<Component {...pageProps} />
-				</RootLayout>
+				<ThemeModeProvider>
+					<CssBaseline />
+					<RootLayout>
+						<Component {...pageProps} />
+					</RootLayout>
+				</ThemeModeProvider>
 			</AppCacheProvider>
 		</Authenticator>
 	)
