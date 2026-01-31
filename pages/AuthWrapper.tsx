@@ -1,4 +1,4 @@
-import outputs from '../amplify_outputs.json'
+import outputs from '@/amplify_outputs.json'
 import { Amplify } from 'aws-amplify'
 import type { AppProps } from 'next/app'
 import '@aws-amplify/ui-react/styles.css'
