@@ -1,20 +1,75 @@
+'use client'
+
 import type { AppProps } from 'next/app'
-import dynamic from 'next/dynamic'
-import RootLayout from '@/layout/layout'
 import { CssBaseline } from '@mui/material'
 import { AppCacheProvider } from '@mui/material-nextjs/v13-pagesRouter'
 import { ThemeModeProvider } from '@/lib/ThemeContext'
+import RootLayout from '@/layout/layout'
+import { useEffect, useState, ReactNode } from 'react'
 
-// Amplify認証を有効にするかどうか（環境変数で制御）
 const ENABLE_AUTH = process.env.NEXT_PUBLIC_ENABLE_AUTH === 'true'
 
-// 認証が有効な場合のみAuthWrapperを動的にロード（SSRで読み込まない）
-const AuthWrapper = ENABLE_AUTH
-	? dynamic(() => import('./AuthWrapper'), { ssr: false })
-	: null
+function AuthWrapper({ children }: { children: ReactNode }) {
+	const [isReady, setIsReady] = useState(false)
+	const [AuthenticatorComponent, setAuthenticatorComponent] = useState<React.ComponentType<{ hideSignUp: boolean; children: ReactNode }> | null>(null)
 
-function AppContent({ Component, pageProps }: AppProps) {
-	return (
+	useEffect(() => {
+		const initAmplify = async () => {
+			try {
+				const [
+					{ Amplify },
+					{ Authenticator },
+					outputs
+				] = await Promise.all([
+					import('aws-amplify'),
+					import('@aws-amplify/ui-react'),
+					import('@/amplify_outputs.json')
+				])
+
+				await import('@aws-amplify/ui-react/styles.css')
+
+				Amplify.configure(outputs.default, { ssr: true })
+				const existingConfig = Amplify.getConfig()
+				Amplify.configure({
+					...existingConfig,
+					API: {
+						...existingConfig.API,
+						REST: (outputs.default as any).custom?.API,
+					},
+				})
+
+				setAuthenticatorComponent(() => Authenticator)
+				setIsReady(true)
+			} catch (error) {
+				console.error('Failed to initialize Amplify:', error)
+				setIsReady(true)
+			}
+		}
+
+		initAmplify()
+	}, [])
+
+	if (!isReady) {
+		return (
+			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+				Loading...
+			</div>
+		)
+	}
+
+	if (AuthenticatorComponent) {
+		return (
+			<AuthenticatorComponent hideSignUp>
+				{children}
+			</AuthenticatorComponent>
+		)
+	}
+
+	return <>{children}</>
+}
+
+export default function App({ Component, pageProps }: AppProps) {
+	const content = (
 		<AppCacheProvider {...Component}>
 			<ThemeModeProvider>
 				<CssBaseline />
@@ -24,12 +79,10 @@ function AppContent({ Component, pageProps }: AppProps) {
 			</ThemeModeProvider>
 		</AppCacheProvider>
 	)
-}
 
-export default function App(props: AppProps) {
-	if (ENABLE_AUTH && AuthWrapper) {
-		return <AuthWrapper {...props} />
+	if (ENABLE_AUTH) {
+		return <AuthWrapper>{content}</AuthWrapper>
 	}
 
-	return <AppContent {...props} />
+	return content
 }
