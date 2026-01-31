@@ -16,25 +16,27 @@ function AuthWrapper({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		const initAmplify = async () => {
 			try {
+				// Fetch config from public folder to avoid webpack resolution
+				const configResponse = await fetch('/amplify_outputs.json')
+				const outputs = await configResponse.json()
+
 				const [
 					{ Amplify },
 					{ Authenticator },
-					outputs
 				] = await Promise.all([
 					import('aws-amplify'),
 					import('@aws-amplify/ui-react'),
-					import('@/amplify_outputs.json')
 				])
 
 				await import('@aws-amplify/ui-react/styles.css')
 
-				Amplify.configure(outputs.default, { ssr: true })
+				Amplify.configure(outputs, { ssr: true })
 				const existingConfig = Amplify.getConfig()
 				Amplify.configure({
 					...existingConfig,
 					API: {
 						...existingConfig.API,
-						REST: (outputs.default as any).custom?.API,
+						REST: outputs.custom?.API,
 					},
 				})
 
