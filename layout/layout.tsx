@@ -2,9 +2,10 @@ import styled from '@emotion/styled'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import { Box, Button, IconButton, Typography, useTheme } from '@mui/material'
-import { fetchUserAttributes, signOut } from 'aws-amplify/auth'
 import { useEffect, useState } from 'react'
 import { useThemeMode } from '@/lib/ThemeContext'
+
+const ENABLE_AUTH = process.env.NEXT_PUBLIC_ENABLE_AUTH === 'true'
 
 const PageWrapper = styled('div')(() => ({
 	display: 'flex',
@@ -43,7 +44,12 @@ export default function RootLayout({
 
 	useEffect(() => {
 		const fetchUser = async () => {
+			if (!ENABLE_AUTH) {
+				setEmail('demo@example.com')
+				return
+			}
 			try {
+				const { fetchUserAttributes } = await import('aws-amplify/auth')
 				const user = await fetchUserAttributes()
 				if (!user.email) {
 					throw Error('クライアント情報の取得に失敗しました。')
@@ -100,19 +106,24 @@ export default function RootLayout({
 					>
 						{isDark ? <LightModeIcon /> : <DarkModeIcon />}
 					</IconButton>
-					<Button
-						variant='text'
-						onClick={() => signOut()}
-						sx={{
-							color: '#fff',
-							'&:hover': {
-								color: 'rgba(255, 255, 255, 0.8)',
-								backgroundColor: 'transparent',
-							},
-						}}
-					>
-						Sign Out
-					</Button>
+					{ENABLE_AUTH && (
+						<Button
+							variant='text'
+							onClick={async () => {
+								const { signOut } = await import('aws-amplify/auth')
+								signOut()
+							}}
+							sx={{
+								color: '#fff',
+								'&:hover': {
+									color: 'rgba(255, 255, 255, 0.8)',
+									backgroundColor: 'transparent',
+								},
+							}}
+						>
+							Sign Out
+						</Button>
+					)}
 				</Box>
 			</Header>
 			<PageWrapper>

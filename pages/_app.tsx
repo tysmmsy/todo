@@ -1,36 +1,36 @@
-import outputs from '../amplify_outputs.json'
-import { Amplify } from 'aws-amplify'
 import type { AppProps } from 'next/app'
-import '@aws-amplify/ui-react/styles.css'
 import RootLayout from '@/layout/layout'
-import { Authenticator } from '@aws-amplify/ui-react'
 import { CssBaseline } from '@mui/material'
 import { AppCacheProvider } from '@mui/material-nextjs/v13-pagesRouter'
 import { ThemeModeProvider } from '@/lib/ThemeContext'
 
-Amplify.configure(outputs, {
-	ssr: true,
-})
-const existingConfig = Amplify.getConfig()
-Amplify.configure({
-	...existingConfig,
-	API: {
-		...existingConfig.API,
-		REST: outputs.custom.API,
-	},
-})
+// Amplify認証を有効にするかどうか（環境変数で制御）
+const ENABLE_AUTH = process.env.NEXT_PUBLIC_ENABLE_AUTH === 'true'
 
-export default function App({ Component, pageProps }: AppProps) {
+// 認証が有効な場合のみAmplifyをインポート・設定
+if (ENABLE_AUTH) {
+	import('@aws-amplify/ui-react/styles.css')
+}
+
+function AppContent({ Component, pageProps }: AppProps) {
 	return (
-		<Authenticator hideSignUp>
-			<AppCacheProvider {...Component}>
-				<ThemeModeProvider>
-					<CssBaseline />
-					<RootLayout>
-						<Component {...pageProps} />
-					</RootLayout>
-				</ThemeModeProvider>
-			</AppCacheProvider>
-		</Authenticator>
+		<AppCacheProvider {...Component}>
+			<ThemeModeProvider>
+				<CssBaseline />
+				<RootLayout>
+					<Component {...pageProps} />
+				</RootLayout>
+			</ThemeModeProvider>
+		</AppCacheProvider>
 	)
+}
+
+export default function App(props: AppProps) {
+	if (ENABLE_AUTH) {
+		// 動的インポートで認証コンポーネントを読み込み
+		const AuthWrapper = require('./AuthWrapper').default
+		return <AuthWrapper {...props} />
+	}
+
+	return <AppContent {...props} />
 }
